@@ -1,0 +1,132 @@
+---
+title: 'Lab 2: Deep Learning for Sequential Data'
+author: "Lansotn Chen"
+output:
+  pdf_document: default
+  word_document: default
+fontsize: 11pt
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ISLR2)
+library(glmnet)
+library(keras)
+library(readr)
+library(dplyr)
+use_python("C:\\Users\\ctlan\\anaconda3\\envs\\KNN")
+```
+
+
+We are going to do multivariate time series forecasting with LSTM in this lab. We will look at an air pollution dataset that reports on the weather and the level of pollution each hour for five years at the US embassy in Beijing, China.
+```{r}
+poll<-read.csv('https://zhang-datasets.s3.us-east-2.amazonaws.com/pollution.csv')
+#pm2.5: PM2.5 concentration
+#DEWP: Dew Point
+#TEMP: Temperature
+#PRES: Pressure
+#cbwd: Combined wind direction
+#Iws: Cumulated wind speed
+#Is: Cumulated hours of snow
+#Ir: Cumulated hours of rain
+```
+
+A quick check reveals NA values for pm2.5 for the first 24 hours. We will, therefore, need to remove the first row of data. There are also a few scattered “NA” values later in the dataset; we can mark them with 0 values for now.
+```{r} 
+poll <-poll[,-1]
+poll <-poll[-c(1:24),]
+poll[is.na(poll)]<-0
+```
+
+Let's take a look at the data. 
+```{r}
+plot(poll$Ir,type="l")
+acf(poll$pm2.5)
+
+```
+We will use the first 4 years as training data and the last year as testing data.
+```{r}
+istrain <- poll$year < 2014
+xdata <- data.matrix(poll[,c(5,12)])
+```
+
+
+We first write functions to create lagged versions of the three time series.
+```{r}
+lagk <- function(x,k){
+  n <- nrow(x)
+  pad <- matrix(NA,k,ncol(x))
+  x_lag <- rbind(pad,x[1:(n-k),])
+  return(x_lag)
+}
+```
+
+
+Let's consider a lag-3 prediction first.
+```{r}
+arframe <- data.frame(pm2.5=xdata[,1],
+                      L1= lagk(xdata,1),
+                      L2= lagk(xdata,2), 
+                      L3= lagk(xdata,3))
+arframe <-arframe[-c(1:3),]
+istrain <- istrain[-c(1:3)]
+
+```
+
+
+```{r}
+n <- nrow(arframe)
+arframe <- data.matrix(arframe)
+xrnn <- array(arframe[,-1],c(n,8,3))
+xrnn <- xrnn[,,3:1]
+xrnn <- aperm(xrnn,c(1,3,2))
+
+dim(xrnn)
+```
+```{r}
+model_rnn <- keras_model_sequential() %>%
+  layer_simple_rnn(input_shape=c(3,8),units=32, dropout = 0.2) %>%
+                     layer_dense(units = 1) 
+                    
+model_rnn %>%
+  compile(loss = 'mse',optimizer = optimizer_adam(),metrics = 'mean_absolute_error')
+
+model_rnn %>%
+  fit(xrnn[istrain,,],arframe[istrain,1],
+  batch_size = 64, epochs = 50, validation_split = 0.2)
+
+
+```
+
+make predictions 
+```{r}
+pred_rnn <- model_rnn %>%
+  predict(xrnn[!istrain,,])
+mean((pred_rnn - arframe[!istrain,1])^2)
+
+1 - mean((pred_rnn - arframe[!istrain,1])^2)/var( arframe[!istrain,1])
+```
+
+Next, let's try LSTM.
+```{r}
+model_lstm <- keras_model_sequential() %>%
+  layer_lstm(input_shape=c(3,8),units = 32,kernel_regularizer = regularizer_l2(0.001)) %>%
+  layer_dense(units = 1)
+
+model_lstm %>%
+  compile(
+    loss='mse',optimizer = optimizer_adam(),
+    metrics = 'mean_absolute_error'
+  )
+
+ model_lstm %>%
+   fit(
+     xrnn[istrain,,],arframe[istrain,1],batch_size=128,epochs=50,validation_split = 0.2
+   )
+```
+
+```{r}
+pred_lstm <- model_lstm() %>% predict(xrnn[!istrain,,])
+1 - mean((pred_lstm - arframe[!istrain,1])^2)/var( arframe[!istrain,1])
+```
+
