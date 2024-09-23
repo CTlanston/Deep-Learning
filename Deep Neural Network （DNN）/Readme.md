@@ -1,6 +1,35 @@
 # Models Used in the Analysis
 
-In this analysis, three types of models were used: **Linear Regression**, a **Deep Neural Network (DNN)**, and a **Generalized Linear Model (GLM) with Lasso Regularization**. Below is a summary of each model and its purpose:
+In this analysis, we explored three different models: **Linear Regression**, a **Deep Neural Network (DNN)**, and a **Generalized Linear Model (GLM) with Lasso Regularization**. Below is a summary of each model and the techniques employed.
+
+---
+
+## Deep Neural Network (DNN) Project Explanation
+
+### 1. Model Architecture
+In this project, a Deep Neural Network (DNN) was used for both regression and classification tasks. The DNN consists of multiple layers:
+
+- **Dense Layers**: Fully connected layers were used with the `ReLU` (Rectified Linear Unit) activation function, which is a common choice for hidden layers due to its ability to handle non-linearities.
+- **Dropout Layers**: Dropout regularization was applied to prevent overfitting. Dropout randomly ignores a subset of neurons during training, which forces the model to be more robust.
+  - A dropout rate of 40% was used for the first layers and 30% for deeper layers.
+  
+### 2. Process Overview
+The process to build and evaluate the DNN involved several key steps:
+
+- **Step 1: Data Preparation**: The input data (features) were first split into training and test sets. 
+- **Step 2: Model Building**: A sequential model was built using fully connected dense layers, followed by dropout layers to ensure that the model doesn’t overfit on small datasets.
+- **Step 3: Compilation**: The model was compiled using an appropriate loss function.
+  - For regression: Mean Squared Error (MSE).
+  - For classification: Binary Cross-Entropy, which is well-suited for binary classification tasks.
+- **Step 4: Training**: The model was trained using the training data for a set number of epochs, with a batch size of 32 for regression and 128 for classification.
+- **Step 5: Evaluation**: The trained model was evaluated on the test data to calculate the error (for regression) or accuracy (for classification).
+
+### 3. Techniques Used
+- **ReLU Activation**: Helps the network learn complex non-linear relationships.
+- **Dropout Regularization**: Prevents overfitting by ignoring some neurons during training.
+- **Adam Optimizer**: A well-known adaptive optimizer used to improve learning speed and convergence.
+- **Early Stopping**: (Not implemented here but recommended) This could be used to stop training when the model's performance no longer improves on the validation set.
+
 
 ```r
 # 1. Linear Regression Model
