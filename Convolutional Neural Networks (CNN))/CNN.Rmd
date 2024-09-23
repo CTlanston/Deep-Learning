@@ -1,0 +1,164 @@
+---
+title: "Homework3"
+author: "Lanston_Chen"
+output:
+  pdf_document: default
+  word_document: default
+fontsize: 11pt
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ISLR)
+library(glmnet)
+library(keras)
+use_python("C:\\Users\\ctlan\\anaconda3\\envs\\KNN")
+```
+
+1. This is a conceptual question, and you do not need coding to find the answers. For your answer to this question, you may upload a separate file, such as a picture of your handwritten note or a screenshot of your notebook.
+
+Consider a neural network with two hidden layers with $p=4$ input units, 2 units in the first hidden layer and 2 units in the second hidden layer, and a single output $Y$. 
+
+a. Draw a picture of the network, similar to Slide #27 of Lecture 4.
+b. Write out the model for $Y=f(X)$ under this neural network, assuming RELU activation functions. 
+c. Now plug in some values for the coefficients and write out the value for $Y=f(X)$. You can decide what values you want to use for the coefficients.
+d. How many parameters are in this model?
+
+
+2. Fit a neural network to the _Default_ data that collect customer default records for a credit card company. Use a single hidden layer with 10 units, and dropout regularization. You can look at Lab 1 for guidance. Compare the classification performance of your model with that of logistic regression.
+
+```{r}
+data(Default) # this data is part of ISLR
+
+#preprocess the data
+Default$default <- ifelse(Default$default == "Yes", 1, 0)
+Default$student <- ifelse(Default$student == "Yes", 1, 0)
+
+#Split the Data into Training and Test Sets
+set.seed(123) # For reproducibility
+
+train_id <- sample(1:nrow(Default),nrow(Default)*0.7)
+test_id <-- train_id
+
+trainData <- Default[train_id, ]
+testData <- Default[test_id, ]
+
+```
+
+fit Neural Network 
+```{r}
+model <- keras_model_sequential() %>%
+  layer_dense(units = 10, activation = 'relu', input_shape = c(3)) %>%
+  layer_dropout(rate = 0.5) %>%
+  layer_dense(units = 1, activation = 'sigmoid')
+
+model %>% compile(
+  optimizer = 'adam',
+  loss = 'binary_crossentropy',
+  metrics = c('accuracy')
+)
+
+x_train <- as.matrix(trainData[, c("income", "balance", "student")])
+y_train <- as.matrix(trainData$default)
+
+model %>% fit(x_train, y_train, epochs = 100, batch_size = 32, validation_split = 0.2)
+
+```
+
+fit Logistic regression 
+```{r}
+glmModel <- glm(default ~ income + balance + student, family = binomial, data = trainData)
+```
+
+compare the preformance 
+```{r}
+accuracy <- function(pred, true) {
+  mean(as.numeric(pred) == true)
+}
+
+
+# Logistic Regression prediction
+glmPreds <- predict(glmModel, newdata = testData, type = "response")
+accuracy_glm <- accuracy((glmPreds > 0.5) * 1, testData$default)
+
+# Neural Network prediction
+nnPreds <- model %>% predict(as.matrix(testData[, c("income", "balance", "student")]))
+
+
+# compare
+nnPreds <- ifelse(nnPreds > 0.5, 1, 0)
+accuracy_nn <- accuracy(nnPreds, testData$default)
+
+# Print out the comparison
+cat("Accuracy of Logistic Regression Model:", accuracy_glm, "\n")
+cat("Accuracy of Neural Network Model:", accuracy_nn, "\n")
+
+```
+The logistic regression model outperformed the neural network (97.3% vs. 96.7% accuracy) on the Default dataset, indicating that simplicity sometimes leads to better performance for certain classification tasks.
+
+
+
+
+
+3. In this problem, you will classify fashion images. This is a dataset of 60,000 28x28 grayscale images of 10 fashion categories, along with a test set of 10,000 images. The 10 categories are T-shirt/top, Trouser, Pullover, Dress, Coat, Sandal, Shirt, Sneaker, Bag and Ankle boot.
+
+Building a neutral network with at least two layers, and report the classification performance of your model. You can look at the analysis of the MNSIT hand-written digit data in L4 for guidance. 
+
+```{r}
+data <-dataset_fashion_mnist()
+x_train <- data$train$x
+g_train <- data$train$y
+x_test <- data$test$x
+g_test <- data$test$y
+dim(x_train)
+```
+
+
+preprocessing the data 
+```{r}
+# Reshape and normalize the data
+x_train <- array_reshape(x_train, c(dim(x_train)[1], 28, 28, 1)) / 255
+x_test <- array_reshape(x_test, c(dim(x_test)[1], 28, 28, 1)) / 255
+
+y_train <- to_categorical(g_train, 10)
+y_test <- to_categorical(g_test, 10)
+dim(y_train)
+```
+build the model and fit the model
+```{r}
+# Build the model
+model <- keras_model_sequential() %>%
+  layer_conv_2d(filters = 32, kernel_size = c(3, 3), padding = "same", activation = "relu", input_shape = c(28, 28, 1)) %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_conv_2d(filters = 64, kernel_size = c(3, 3), padding = "same", activation = "relu") %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_flatten() %>%
+  layer_dropout(rate = 0.5) %>%
+  layer_dense(units = 512, activation = "relu") %>%
+  layer_dense(units = 10, activation = "softmax")
+
+model %>% compile(
+  loss = "categorical_crossentropy",
+  optimizer = optimizer_rmsprop(),
+  metrics = c("accuracy")
+)
+
+# Train the model
+history <- model %>% fit(
+  x_train, y_train, epochs = 10,
+  batch_size = 128, validation_split = 0.2
+)
+
+# Evaluate the model
+model %>% evaluate(x_test, y_test)
+
+```
+
+
+These images have very low resolutions. You can can take a look at some using the following code.
+```{r}
+par(mfrow=c(3,3),mar=c(1,1,1,1)) # 3x3 plot layout
+for (i in 1:9) {
+ image(1:28, 1:28, t(x_train[i, , , 1]), col = gray.colors(256), xaxt = 'n', yaxt = 'n', main = paste("Label:", g_train[i]))
+}
+```
