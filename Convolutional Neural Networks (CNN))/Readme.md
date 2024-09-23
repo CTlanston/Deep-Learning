@@ -3,7 +3,7 @@
 ## Overview
 This project focuses on using Convolutional Neural Networks (CNNs) for image classification tasks, specifically the **Fashion MNIST** dataset. CNNs are particularly effective for image recognition due to their ability to capture spatial hierarchies in data by applying convolutional filters and pooling layers. We implement a CNN with two convolutional layers followed by fully connected layers to classify fashion images into 10 categories (e.g., T-shirts, trousers, coats, etc.).
 
-## Models Used
+## Parameter Used
 - **Convolutional Layers**: Extract features from the image using filters.
 - **Max Pooling Layers**: Reduce the spatial dimensions of the feature maps.
 - **Dropout Layer**: Prevent overfitting by randomly ignoring certain neurons during training.
